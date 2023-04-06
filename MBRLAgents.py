@@ -19,15 +19,31 @@ class DynaAgent:
         self.learning_rate = learning_rate
         self.gamma = gamma
         self.Q_sa = np.zeros((n_states,n_actions))
+        # The model needs to store tuples of size two with (r,s_next)
+        self.model = np.zeros((n_states,n_actions,2))
         # TO DO: Initialize count tables, and reward sum tables. 
         
     def select_action(self, s, epsilon):
-        # TO DO: Add own code
-        a = np.random.randint(0,self.n_actions) # Replace this with correct action selection
+        # implement epsilon-greedy action selection
+        random = np.random.rand()
+        if random < epsilon:
+            a = np.random.randint(0,self.n_actions)
+        else:
+            a = np.argmax(self.Q_sa[s,:])
         return a
         
     def update(self,s,a,r,done,s_next,n_planning_updates):
-        # TO DO: Add own code
+        # Update Q-table
+        self.Q_sa[s,a] = self.Q_sa[s,a] + self.learning_rate * (r + self.gamma * np.max(self.Q_sa[s_next,:]) - self.Q_sa[s,a])
+        self.model[s,a] = np.array([r,s_next])
+        # Update Q-table with playouts using the model.
+        for i in range(n_planning_updates):
+            s = np.random.randint(0,self.n_states)
+            a = np.random.randint(0,self.n_actions)
+            r = self.model[s,a,0]
+            s_next = self.model[s,a,1]
+            self.Q_sa[s,a] = self.Q_sa[s,a] + self.learning_rate * (r + self.gamma * np.max(self.Q_sa[s_next,:]) - self.Q_sa[s,a])
+
         pass
     
 class PrioritizedSweepingAgent:
