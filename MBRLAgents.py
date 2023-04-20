@@ -95,30 +95,44 @@ class PrioritizedSweepingAgent:
         # TO DO: Initialize count tables, and reward sum tables.
 
     def select_action(self, s, epsilon):
-        # TO DO: Add own code
-        # Replace this with correct action selection
-        a = np.random.randint(0, self.n_actions)
+        # implement epsilon-greedy action selection
+        random = np.random.rand()
+        if random < epsilon:
+            a = np.random.randint(0, self.n_actions)
+        else:
+            a = np.argmax(self.Q_sa[s, :])
         return a
 
     def updateModel(self, s_begin, action, obtainedReward, s_next):
         self.transitionCounts[s_begin, action, s_next] += 1
         self.rewardSum[s_begin, action, s_next] += obtainedReward
         # Calculate the proportion of times that the agent has observed this transition
-        self.transitionEstimate = self.transitionCounts(
+        self.transitionEstimate[s_begin, action, s_next] = self.transitionCounts(
             s_begin, action, s_next) / (np.sum(self.transitionCounts[s_begin, action, :]))
         # calculate the estimated reward for this triplet
         self.rewardEstimate = self.rewardSum(
             s_begin, action, s_next) / self.transitionCounts(s_begin, action, s_next)
 
     def update(self, s, a, r, done, s_next, n_planning_updates):
-        # TO DO: Add own code
+        self.updateModel(s, a, r, s_next)
+        p = np.abs(r + self.gamma * np.max(self.Q_sa[s_next, :]) - self.Q_sa[s, a])
 
-        # Helper code to work with the queue
-        # Put (s,a) on the queue with priority p (needs a minus since the queue pops the smallest priority first)
-        # self.queue.put((-p,(s,a)))
-        # Retrieve the top (s,a) from the queue
-        # _,(s,a) = self.queue.get() # get the top (s,a) for the queue
-        pass
+        # Add the state-action pair to the priority queue if its priority is above the cutoff.
+        if p > self.priority_cutoff:
+            self.queue.put((-p, (s, a)))
+
+        for _ in range(n_planning_updates):
+            # If the queue is empty, stop planning.
+            if self.queue.empty():
+                break
+            # Pop the highest priority state-action pair off the queue.
+            _, (state, action) = self.queue.get()
+            td_error = 0
+
+            for s_next_prime in range(self.n_states):
+                td_error += self.transitionEstimate[state, action, s_next_prime] * (self.rewardEstimate[state, action, s_next_prime] + self.gamma * np.max(self.Q_sa[s_next_prime, :]))
+
+            self.Q_sa[state, action] += self.learning_rate * (td_error - self.Q_sa[state, action])
 
 
 def test():
