@@ -43,17 +43,20 @@ class DynaAgent:
         # Calculate the proportion of times that the agent has observed this transition
         self.transitionEstimate = self.transitionCounts(s_begin, action, s_next) / (np.sum(self.transitionCounts[s_begin, action, :]))
         # calculate the estimated reward for this triplet
-        self.rewardEstimate = self.rewardSum(s_begin, action, s_next) / (np.sum(self.transitionCounts[s_begin, action, :]))
+        self.rewardEstimate = self.rewardSum(s_begin, action, s_next) / self.transitionCounts(s_begin, action, s_next)
 
-
-        
     def update(self,s,a,r,done,s_next,n_planning_updates):
-        # Update Q-table
+        # Update the model.
+        self.updateModel(s,a,r,s_next)
+        # Update Q-table.
         self.Q_sa[s,a] = self.Q_sa[s,a] + self.learning_rate * (r + self.gamma * np.max(self.Q_sa[s_next,:]) - self.Q_sa[s,a])
         # Update Q-table with playouts using the model.
         for i in range(n_planning_updates):
             s = np.random.randint(0,self.n_states)
             a = np.random.randint(0,self.n_actions)
+            # obtain the next state and reward from the model.
+            s_next = np.random.choice(self.n_states, p=self.transitionEstimate[s,a,:])
+            r = self.rewardEstimate[s,a,s_next]
             self.Q_sa[s,a] = self.Q_sa[s,a] + self.learning_rate * (r + self.gamma * np.max(self.Q_sa[s_next,:]) - self.Q_sa[s,a])
         pass
     
