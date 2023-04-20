@@ -69,6 +69,10 @@ class PrioritizedSweepingAgent:
         self.gamma = gamma
         self.priority_cutoff = priority_cutoff
         self.queue = PriorityQueue()
+        # count each transition from state s to state s_next when taking action a.
+        self.transitionCounts = np.zeros((n_states,n_actions,n_states)) 
+        # store the sum of rewards obtain from taking action a in state s and ending in state s_next.
+        self.rewardSum = np.zeros((n_states,n_actions,n_states))
         
         self.Q_sa = np.zeros((n_states,n_actions))
         # TO DO: Initialize count tables, and reward sum tables. 
