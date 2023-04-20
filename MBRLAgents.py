@@ -19,9 +19,14 @@ class DynaAgent:
         self.learning_rate = learning_rate
         self.gamma = gamma
         self.Q_sa = np.zeros((n_states,n_actions))
-        # The model needs to store tuples of size two with (r,s_next)
-        self.model = np.zeros((n_states,n_actions,2))
-        # TO DO: Initialize count tables, and reward sum tables. 
+        # count each transition from state s to state s_next when taking action a
+        self.transitionCounts = np.zeros((n_states,n_actions,n_states)) 
+        # store the sum of rewards obtain from taking action a in state s and ending in state s_next
+        self.rewardSum = np.zeros((n_states,n_actions,n_states))
+        # The estimate transiton probability for taking action a in state s and ending in state s_next
+        self.transitionEstimate = np.zeros((n_states,n_actions,n_states))
+        # The estimate reward for taking action a in state s and ending in state s_next
+        self.rewardEstimate = np.zeros((n_states,n_actions,n_states))
         
     def select_action(self, s, epsilon):
         # implement epsilon-greedy action selection
@@ -31,19 +36,25 @@ class DynaAgent:
         else:
             a = np.argmax(self.Q_sa[s,:])
         return a
+    
+    def updateModel(self,s_begin,action,obtainedReward,s_next):
+        self.transitionCounts[s_begin,action,s_next] += 1
+        self.rewardSum[s_begin,action,s_next] += obtainedReward
+        # Calculate the proportion of times that the agent has observed this transition
+        self.transitionEstimate = self.transitionCounts(s_begin, action, s_next) / (np.sum(self.transitionCounts[s_begin, action, :]))
+        # calculate the estimated reward for this triplet
+        self.rewardEstimate = self.rewardSum(s_begin, action, s_next) / (np.sum(self.transitionCounts[s_begin, action, :]))
+
+
         
     def update(self,s,a,r,done,s_next,n_planning_updates):
         # Update Q-table
         self.Q_sa[s,a] = self.Q_sa[s,a] + self.learning_rate * (r + self.gamma * np.max(self.Q_sa[s_next,:]) - self.Q_sa[s,a])
-        self.model[s,a] = np.array([r,s_next])
         # Update Q-table with playouts using the model.
         for i in range(n_planning_updates):
             s = np.random.randint(0,self.n_states)
             a = np.random.randint(0,self.n_actions)
-            r = self.model[s,a,0]
-            s_next = self.model[s,a,1]
             self.Q_sa[s,a] = self.Q_sa[s,a] + self.learning_rate * (r + self.gamma * np.max(self.Q_sa[s_next,:]) - self.Q_sa[s,a])
-
         pass
     
 class PrioritizedSweepingAgent:
