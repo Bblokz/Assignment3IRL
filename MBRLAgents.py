@@ -42,15 +42,21 @@ class DynaAgent:
         self.transitionCounts[s_begin, action, s_next] += 1
         self.rewardSum[s_begin, action, s_next] += obtainedReward
         # Calculate the proportion of times that the agent has observed this transition
-        self.transitionEstimate = self.transitionCounts(
-            s_begin, action, s_next) / (np.sum(self.transitionCounts[s_begin, action, :]))
+        self.transitionEstimate[s_begin,action,s_next] = self.transitionCounts[s_begin, action, s_next] / (np.sum(self.transitionCounts[s_begin, action, :]))
+        # print(self.transitionCounts[s_begin, action, s_next])
+        # print(np.sum(self.transitionCounts[s_begin, action, :]))
+        # print(self.transitionEstimate[s_begin,action,s_next])
+
+        # exit()
         # calculate the estimated reward for this triplet
-        self.rewardEstimate = self.rewardSum(
-            s_begin, action, s_next) / self.transitionCounts(s_begin, action, s_next)
+        self.rewardEstimate = self.rewardSum[
+            s_begin, action, s_next] / self.transitionCounts[s_begin, action, s_next]
 
     def update(self, s, a, r, done, s_next, n_planning_updates):
         # Update the model.
         self.updateModel(s, a, r, s_next)
+        print(self.transitionCounts[s, a, s_next] )
+    
         # Update Q-table.
         self.Q_sa[s, a] = self.Q_sa[s, a] + self.learning_rate * \
             (r + self.gamma * np.max(self.Q_sa[s_next, :]) - self.Q_sa[s, a])
@@ -58,18 +64,30 @@ class DynaAgent:
         for i in range(n_planning_updates):
             # select random previously observed state using slef.transitioncounts.
             # create set of states that have been visited.
-            visited_states = np.nonzero(np.sum(self.transitionCounts, axis=0))
-            s = np.random.choice(visited_states)
+            observed_states = np.nonzero(self.transitionCounts[s,:,:])[0]
+            pickedState = np.random.choice(observed_states)
+
             # select action from column zero in obwerved_actions.
-            a = np.random.choice(np.random.choice(
-                self.transitionEstimate[s, :, :][0]))
+            observedActions = []
+            for action in range(self.n_actions):
+                if (np.nonzero(self.transitionEstimate[s][action][:])[0] != 0):
+                    observedActions.append(action)
+            
+            # print("action 0 taken ", (np.nonzero(self.transitionEstimate[s][0][:])[0]))
+            # print("action 1 taken ", (np.nonzero(self.transitionEstimate[s][1][:])[0]))
+            # print("action 2 taken ", (np.nonzero(self.transitionEstimate[s][2][:])[0]))
+            # print("action 3 taken ", (np.nonzero(self.transitionEstimate[s][3][:])[0]))
+            # print(observedActions)
+            pickedAction = np.random.choice(observedActions)
+
             # obtain the next state and reward from the model.
-            s_next = np.random.choice(
-                self.n_states, p=self.transitionEstimate[s, a, :])
-            r = self.rewardEstimate[s, a, s_next]
-            self.Q_sa[s, a] = self.Q_sa[s, a] + self.learning_rate * \
+            print(self.n_states)
+            print(self.transitionEstimate[pickedState,pickedAction, :])
+            s_next = np.random.choice(np.arange(self.n_states), p=self.transitionEstimate[pickedState,pickedAction, :])
+            r = self.rewardEstimate[pickedState, pickedAction, s_next]
+            self.Q_sa[pickedState, pickedAction] = self.Q_sa[pickedState, pickedAction] + self.learning_rate * \
                 (r + self.gamma *
-                 np.max(self.Q_sa[s_next, :]) - self.Q_sa[s, a])
+                 np.max(self.Q_sa[s_next, :]) - self.Q_sa[pickedState, pickedAction])
         pass
 
 
@@ -104,8 +122,7 @@ class PrioritizedSweepingAgent:
         self.transitionCounts[s_begin, action, s_next] += 1
         self.rewardSum[s_begin, action, s_next] += obtainedReward
         # Calculate the proportion of times that the agent has observed this transition
-        self.transitionEstimate = self.transitionCounts(
-            s_begin, action, s_next) / (np.sum(self.transitionCounts[s_begin, action, :]))
+        self.transitionEstimate = self.transitionCounts[s_begin, action, s_next] / (np.sum(self.transitionCounts[s_begin, action, :]))
         # calculate the estimated reward for this triplet
         self.rewardEstimate = self.rewardSum(
             s_begin, action, s_next) / self.transitionCounts(s_begin, action, s_next)
