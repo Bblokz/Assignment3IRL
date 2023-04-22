@@ -46,16 +46,22 @@ class DynaAgent:
         # print(self.transitionCounts[s_begin, action, s_next])
         # print(np.sum(self.transitionCounts[s_begin, action, :]))
         # print(self.transitionEstimate[s_begin,action,s_next])
-
+        print("s_begin," , s_begin)
+        print("action" , action)
+        print("s_next", s_next)
+        print("self.transitionEstimate["+str(s_begin)+","+str(action)+","+str(s_next)+"]", self.transitionEstimate[s_begin,action, :] )
         # exit()
         # calculate the estimated reward for this triplet
-        self.rewardEstimate = self.rewardSum[
+        self.rewardEstimate[s_begin,action,s_next] = self.rewardSum[
             s_begin, action, s_next] / self.transitionCounts[s_begin, action, s_next]
 
     def update(self, s, a, r, done, s_next, n_planning_updates):
         # Update the model.
         self.updateModel(s, a, r, s_next)
-        print(self.transitionCounts[s, a, s_next] )
+        print("updating s_begin," , s)
+        print("updating action" , a)
+        print("updating s_next", s_next)
+        # exit()
     
         # Update Q-table.
         self.Q_sa[s, a] = self.Q_sa[s, a] + self.learning_rate * \
@@ -64,30 +70,46 @@ class DynaAgent:
         for i in range(n_planning_updates):
             # select random previously observed state using slef.transitioncounts.
             # create set of states that have been visited.
-            observed_states = np.nonzero(self.transitionCounts[s,:,:])[0]
+            # np.zero returns tuple of arrays one for each dimension
+            # so we look at index 
+            # print("np.unique(np.nonzero(self.transitionCounts[:,:,:])[0])", np.unique(np.nonzero(self.transitionCounts[:,:,:])[0]))
+            observed_states = np.unique(np.nonzero(self.transitionCounts[:,:,:])[0])
+            # print(np.nonzero(self.transitionCounts[:,:,:])[0])
+            # print("observed_states", observed_states)
+            # exit()
+            
             pickedState = np.random.choice(observed_states)
-
+            # print("pickedState", pickedState)
             # select action from column zero in obwerved_actions.
             observedActions = []
             for action in range(self.n_actions):
-                if (np.nonzero(self.transitionEstimate[s][action][:])[0].size > 0):
+                if (np.nonzero(self.transitionEstimate[pickedState][action][:])[0].size > 0):
                     observedActions.append(action)
-            
+            # print(observedActions)
+            # print("observedActions", observedActions)
+            # exit()
             # print("action 0 taken ", (np.nonzero(self.transitionEstimate[s][0][:])[0]))
             # print("action 1 taken ", (np.nonzero(self.transitionEstimate[s][1][:])[0]))
             # print("action 2 taken ", (np.nonzero(self.transitionEstimate[s][2][:])[0]))
             # print("action 3 taken ", (np.nonzero(self.transitionEstimate[s][3][:])[0]))
             # print(observedActions)
             pickedAction = np.random.choice(observedActions)
-
+            # print("pickedAction", pickedAction)
             # obtain the next state and reward from the model.
-            print(self.n_states)
-            print(self.transitionEstimate[pickedState,pickedAction, :])
-            s_next = np.random.choice(np.arange(self.n_states), p=self.transitionEstimate[pickedState,pickedAction, :])
-            r = self.rewardEstimate[pickedState, pickedAction, s_next]
+            # print("self.n_states", self.n_states)
+            # print(self.transitionEstimate[pickedState,pickedAction, :])
+            # exit()
+            # print("self.transitionEstimate[pickedState,pickedAction, :]", self.transitionEstimate[pickedState,pickedAction, :])
+            pickedNextState = np.random.choice(np.arange(self.n_states), p=self.transitionEstimate[pickedState,pickedAction, :])
+            # print("pickedNextState", pickedNextState)
+            r = self.rewardEstimate[pickedState, pickedAction, pickedNextState]
+            # print(r)
             self.Q_sa[pickedState, pickedAction] = self.Q_sa[pickedState, pickedAction] + self.learning_rate * \
                 (r + self.gamma *
                  np.max(self.Q_sa[s_next, :]) - self.Q_sa[pickedState, pickedAction])
+        # print("planning ended ")
+        # print()
+        # print()
         pass
 
 
