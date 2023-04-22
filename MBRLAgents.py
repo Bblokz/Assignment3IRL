@@ -43,14 +43,7 @@ class DynaAgent:
         self.rewardSum[s_begin, action, s_next] += obtainedReward
         # Calculate the proportion of times that the agent has observed this transition
         self.transitionEstimate[s_begin,action,s_next] = self.transitionCounts[s_begin, action, s_next] / (np.sum(self.transitionCounts[s_begin, action, :]))
-        # print(self.transitionCounts[s_begin, action, s_next])
-        # print(np.sum(self.transitionCounts[s_begin, action, :]))
-        # print(self.transitionEstimate[s_begin,action,s_next])
-        print("s_begin," , s_begin)
-        print("action" , action)
-        print("s_next", s_next)
-        print("self.transitionEstimate["+str(s_begin)+","+str(action)+","+str(s_next)+"]", self.transitionEstimate[s_begin,action, :] )
-        # exit()
+
         # calculate the estimated reward for this triplet
         self.rewardEstimate[s_begin,action,s_next] = self.rewardSum[
             s_begin, action, s_next] / self.transitionCounts[s_begin, action, s_next]
@@ -58,11 +51,7 @@ class DynaAgent:
     def update(self, s, a, r, done, s_next, n_planning_updates):
         # Update the model.
         self.updateModel(s, a, r, s_next)
-        print("updating s_begin," , s)
-        print("updating action" , a)
-        print("updating s_next", s_next)
-        # exit()
-    
+
         # Update Q-table.
         self.Q_sa[s, a] = self.Q_sa[s, a] + self.learning_rate * \
             (r + self.gamma * np.max(self.Q_sa[s_next, :]) - self.Q_sa[s, a])
