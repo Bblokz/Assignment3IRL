@@ -70,7 +70,7 @@ class DynaAgent:
             # select action from column zero in obwerved_actions.
             observedActions = []
             for action in range(self.n_actions):
-                if (np.nonzero(self.transitionEstimate[s][action][:])[0] != 0):
+                if (np.nonzero(self.transitionEstimate[s][action][:])[0].size > 0):
                     observedActions.append(action)
             
             # print("action 0 taken ", (np.nonzero(self.transitionEstimate[s][0][:])[0]))
