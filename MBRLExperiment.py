@@ -21,22 +21,21 @@ def run_repetitions(policy, n_repetitions, n_timesteps, smoothing_window, learni
     # Be sure to turn environment rendering off! It heavily slows down your runtime
 
     learning_curve = np.zeros(n_timesteps)
-    totalReward = 0
-    # Initialize environment and policy
-    env = WindyGridworld()
-    if policy == 'Dyna':
-        pi = DynaAgent(env.n_states, env.n_actions,
-                       learning_rate, gamma)  # Initialize Dyna policy
-    elif policy == 'Prioritized Sweeping':
-        pi = PrioritizedSweepingAgent(
-            env.n_states, env.n_actions, learning_rate, gamma)  # Initialize PS policy
-    else:
-        raise KeyError('Policy {} not implemented'.format(policy))
-
-    # Prepare for running
-    s = env.reset()
     for rep in range(n_repetitions):
         totalReward = 0
+        # Initialize environment and policy
+        env = WindyGridworld()
+        if policy == 'Dyna':
+            pi = DynaAgent(env.n_states, env.n_actions,
+                        learning_rate, gamma)  # Initialize Dyna policy
+        elif policy == 'Prioritized Sweeping':
+            pi = PrioritizedSweepingAgent(
+                env.n_states, env.n_actions, learning_rate, gamma)  # Initialize PS policy
+        else:
+            raise KeyError('Policy {} not implemented'.format(policy))
+
+        # Prepare for running
+        s = env.reset()        
         for t in range(n_timesteps):
             # Select action, transition, update policy
             a = pi.select_action(s, epsilon)
@@ -51,7 +50,7 @@ def run_repetitions(policy, n_repetitions, n_timesteps, smoothing_window, learni
                 s = env.reset()
             else:
                 s = s_next
-        print("learning_curve", learning_curve)
+        print("learning_curve after run", rep, learning_curve)
     # Apply additional smoothing
     learning_curve = learning_curve/n_repetitions
     learning_curve = smooth(learning_curve,smoothing_window) # additional smoothing
