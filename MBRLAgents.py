@@ -77,6 +77,7 @@ class DynaAgent:
             r = self.rewardEstimate[pickedState, pickedAction, pickedNextState]
 
 
+
             # obtain the next state and reward from the model.
             pickedNextState = np.random.choice(np.arange(self.n_states), p=self.transitionEstimate[pickedBeginState,pickedAction, :])
 
