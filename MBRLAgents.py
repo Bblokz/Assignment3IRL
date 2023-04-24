@@ -42,8 +42,9 @@ class DynaAgent:
         self.transitionCounts[s_begin, action, s_next] += 1
         self.rewardSum[s_begin, action, s_next] += obtainedReward
         # Calculate the proportion of times that the agent has observed this transition
-        self.transitionEstimate[s_begin,action,s_next] = self.transitionCounts[s_begin, action, s_next] / (np.sum(self.transitionCounts[s_begin, action, :]))
-        
+        self.transitionEstimate[s_begin, action, s_next] = self.transitionCounts[s_begin,
+                                                                                 action, s_next] / (np.sum(self.transitionCounts[s_begin, action, :]))
+
         # calculate the estimated reward for this triplet
         self.rewardEstimate[s_begin, action, s_next] = self.rewardSum[
             s_begin, action, s_next] / self.transitionCounts[s_begin, action, s_next]
@@ -70,6 +71,12 @@ class DynaAgent:
                     observedActions.append(action)
             
             pickedAction = np.random.choice(observedActions)
+            pickedNextState = np.random.choice(np.arange(
+                self.n_states), p=self.transitionEstimate[pickedState, pickedAction, :])
+
+            r = self.rewardEstimate[pickedState, pickedAction, pickedNextState]
+
+
 
 
             # obtain the next state and reward from the model.
@@ -90,7 +97,7 @@ class PrioritizedSweepingAgent:
         self.learning_rate = learning_rate
         self.gamma = gamma
         self.priority_cutoff = priority_cutoff
-        self.queue = PriorityQueue()
+        self.pq = PriorityQueue()
         # count each transition from state s to state s_next when taking action a
         self.transitionCounts = np.zeros((n_states, n_actions, n_states))
         # store the sum of rewards obtain from taking action a in state s and ending in state s_next
@@ -116,32 +123,55 @@ class PrioritizedSweepingAgent:
         self.transitionCounts[s_begin, action, s_next] += 1
         self.rewardSum[s_begin, action, s_next] += obtainedReward
         # Calculate the proportion of times that the agent has observed this transition
-        self.transitionEstimate[s_begin, action, s_next] = self.transitionCounts(
-            s_begin, action, s_next) / (np.sum(self.transitionCounts[s_begin, action, :]))
+        self.transitionEstimate[s_begin, action, s_next] = self.transitionCounts[
+            s_begin, action, s_next] / (np.sum(self.transitionCounts[s_begin, action, :]))
         # calculate the estimated reward for this triplet
-        self.rewardEstimate = self.rewardSum(
-            s_begin, action, s_next) / self.transitionCounts(s_begin, action, s_next)
+        self.rewardEstimate[s_begin, action, s_next] = self.rewardSum[
+            s_begin, action, s_next] / self.transitionCounts[s_begin, action, s_next]
 
     def update(self, s, a, r, done, s_next, n_planning_updates):
         self.updateModel(s, a, r, s_next)
-        p = np.abs(r + self.gamma * np.max(self.Q_sa[s_next, :]) - self.Q_sa[s, a])
-
+        p = np.abs(r + self.gamma *
+                   np.max(self.Q_sa[s_next, :]) - self.Q_sa[s, a])
         # Add the state-action pair to the priority queue if its priority is above the cutoff.
         if p > self.priority_cutoff:
-            self.queue.put((-p, (s, a)))
+            self.pq.put((-p, (s, a)))
 
         for _ in range(n_planning_updates):
             # If the queue is empty, stop planning.
-            if self.queue.empty():
+            if self.pq.empty():
                 break
             # Pop the highest priority state-action pair off the queue.
-            _, (state, action) = self.queue.get()
+            _, (priorityState, priorityAction) = self.pq.get()
             td_error = 0
 
+            # Calculate the td (for all possible next states, given state and action)
             for s_next_prime in range(self.n_states):
-                td_error += self.transitionEstimate[state, action, s_next_prime] * (self.rewardEstimate[state, action, s_next_prime] + self.gamma * np.max(self.Q_sa[s_next_prime, :]))
+                td_error += self.transitionEstimate[priorityState, priorityAction, s_next_prime] * (
+                    self.rewardEstimate[priorityState, priorityAction, s_next_prime] + self.gamma * np.max(self.Q_sa[s_next_prime, :]))
 
-            self.Q_sa[state, action] += self.learning_rate * (td_error - self.Q_sa[state, action])
+            # Update model using the td calculated above.
+            self.Q_sa[priorityState, priorityAction] += self.learning_rate * \
+                (td_error - self.Q_sa[priorityState, priorityAction])
+
+            # Get states that can result in ending in priorityState.
+            startingStates = np.unique(np.nonzero(
+                self.transitionCounts[:, :, priorityState])[0])
+
+            for startState in startingStates:
+                # Get actions that can result in ending in priorityState from startState
+                observedActions = np.unique(np.nonzero(
+                    self.transitionCounts[startState, :, priorityState])[0])
+                for observedAction in observedActions:
+                    estimatedReward = self.rewardEstimate[startState,
+                                                          observedAction, priorityState]
+                    
+                    p = np.abs(estimatedReward + self.gamma *
+                               np.max(self.Q_sa[s_next, :]) - self.Q_sa[startState, observedAction])
+                    
+                    # Add the state-action pair to the priority queue if its priority is above the cutoff.
+                    if p > self.priority_cutoff:
+                        self.pq.put((-p, (startState, observedAction)))
 
 
 def test():
@@ -150,7 +180,7 @@ def test():
     gamma = 0.99
 
     # Algorithm parameters
-    policy = 'dyna'  # 'ps'
+    policy = 'ps'  # 'ps'
     epsilon = 0.1
     learning_rate = 0.5
     n_planning_updates = 5
