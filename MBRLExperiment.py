@@ -20,7 +20,7 @@ def run_repetitions(policy, n_repetitions, n_timesteps, smoothing_window, learni
     # Average the learning curves over repetitions, and then additionally smooth the curve
     # Be sure to turn environment rendering off! It heavily slows down your runtime
 
-    learning_curve = np.empty(0)
+    learning_curve = np.zero(n_timesteps)
 
     # Initialize environment and policy
     env = WindyGridworld()
@@ -35,22 +35,21 @@ def run_repetitions(policy, n_repetitions, n_timesteps, smoothing_window, learni
 
     # Prepare for running
     s = env.reset()
+    for rep in n_repetitions:
+        for t in range(n_timesteps):
+            # Select action, transition, update policy
+            a = pi.select_action(s, epsilon)
+            s_next, r, done = env.step(a)
+            totalReward +=r
+            learning_curve[t] += learning_curve,totalReward/(t+1)
+            pi.update(s=s, a=a, r=r, done=done, s_next=s_next,
+                    n_planning_updates=n_planning_updates)
 
-    for t in range(n_timesteps):
-        # Select action, transition, update policy
-        a = pi.select_action(s, epsilon)
-        s_next, r, done = env.step(a)
-        totalReward +=r
-        learning_curve= np.append(learning_curve,totalReward/(t+1))
-        pi.update(s=s, a=a, r=r, done=done, s_next=s_next,
-                  n_planning_updates=n_planning_updates)
-
-        # Reset environment when terminated
-        if done:
-            s = env.reset()
-        else:
-            s = s_next
-
+            # Reset environment when terminated
+            if done:
+                s = env.reset()
+            else:
+                s = s_next
     # Apply additional smoothing
     learning_curve = smooth(learning_curve,smoothing_window) # additional smoothing
     return learning_curve
