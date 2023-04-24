@@ -19,9 +19,38 @@ def run_repetitions(policy, n_repetitions, n_timesteps, smoothing_window, learni
     # Log the obtained rewards during a single training run of n_timesteps, and repeat this proces n_repetitions times
     # Average the learning curves over repetitions, and then additionally smooth the curve
     # Be sure to turn environment rendering off! It heavily slows down your runtime
-    
-    learning_curve = np.random.rand(n_timesteps) # TO DO: replace this with a true experiment!
-    
+
+    learning_curve = np.empty(0)
+
+    # Initialize environment and policy
+    env = WindyGridworld()
+    if policy == 'Dyna':
+        pi = DynaAgent(env.n_states, env.n_actions,
+                       learning_rate, gamma)  # Initialize Dyna policy
+    elif policy == 'Prioritized Sweeping':
+        pi = PrioritizedSweepingAgent(
+            env.n_states, env.n_actions, learning_rate, gamma)  # Initialize PS policy
+    else:
+        raise KeyError('Policy {} not implemented'.format(policy))
+
+    # Prepare for running
+    s = env.reset()
+
+    for t in range(n_timesteps):
+        # Select action, transition, update policy
+        a = pi.select_action(s, epsilon)
+        s_next, r, done = env.step(a)
+        totalReward +=r
+        learning_curve= np.append(learning_curve,totalReward/(t+1))
+        pi.update(s=s, a=a, r=r, done=done, s_next=s_next,
+                  n_planning_updates=n_planning_updates)
+
+        # Reset environment when terminated
+        if done:
+            s = env.reset()
+        else:
+            s = s_next
+
     # Apply additional smoothing
     learning_curve = smooth(learning_curve,smoothing_window) # additional smoothing
     return learning_curve
