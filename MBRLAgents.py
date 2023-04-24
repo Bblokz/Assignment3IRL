@@ -52,34 +52,38 @@ class DynaAgent:
     def update(self, s, a, r, done, s_next, n_planning_updates):
         # Update the model.
         self.updateModel(s, a, r, s_next)
-
+    
         # Update Q-table.
         self.Q_sa[s, a] = self.Q_sa[s, a] + self.learning_rate * \
             (r + self.gamma * np.max(self.Q_sa[s_next, :]) - self.Q_sa[s, a])
+        
         # Update Q-table with playouts using the model.
         for i in range(n_planning_updates):
             # select random previously observed state using slef.transitioncounts.
             # create set of states that have been visited.
-            # np.zero returns tuple of arrays one for each dimension
-            # so we look at index the observed states we look at index 0
-            observed_states = np.unique(np.nonzero(
-                self.transitionCounts[:, :, :])[0])
+            observed_states = np.nonzero(self.transitionCounts[:,:,:])[0]
+            pickedBeginState = np.random.choice(observed_states)
 
-            pickedState = np.random.choice(observed_states)
-
-            # select action that have been observed from pickedState.
-            observedActions = np.nonzero(
-                self.transitionCounts[pickedState, :, :])[0]
+            # select action from column zero in obwerved_actions.
+            observedActions = []
+            for action in range(self.n_actions):
+                if (np.nonzero(self.transitionEstimate[pickedBeginState][action][:])[0] != 0):
+                    observedActions.append(action)
+            
             pickedAction = np.random.choice(observedActions)
             pickedNextState = np.random.choice(np.arange(
                 self.n_states), p=self.transitionEstimate[pickedState, pickedAction, :])
 
             r = self.rewardEstimate[pickedState, pickedAction, pickedNextState]
 
-            self.Q_sa[pickedState, pickedAction] = self.Q_sa[pickedState, pickedAction] + self.learning_rate * \
-                (r + self.gamma *
-                 np.max(self.Q_sa[s_next, :]) - self.Q_sa[pickedState, pickedAction])
 
+            # obtain the next state and reward from the model.
+            pickedNextState = np.random.choice(np.arange(self.n_states), p=self.transitionEstimate[pickedBeginState,pickedAction, :])
+
+            r = self.rewardEstimate[pickedBeginState, pickedAction, pickedNextState]
+            self.Q_sa[pickedBeginState, pickedAction] = self.Q_sa[pickedBeginState, pickedAction] + self.learning_rate * \
+                (r + self.gamma *
+                 np.max(self.Q_sa[pickedNextState, :]) - self.Q_sa[pickedBeginState, pickedAction])
         pass
 
 
