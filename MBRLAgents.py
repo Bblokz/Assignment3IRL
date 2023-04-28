@@ -76,9 +76,6 @@ class DynaAgent:
 
             r = self.rewardEstimate[pickedBeginState, pickedAction, pickedNextState]
 
-
-
-
             # obtain the next state and reward from the model.
             pickedNextState = np.random.choice(np.arange(self.n_states), p=self.transitionEstimate[pickedBeginState,pickedAction, :])
 
@@ -131,6 +128,11 @@ class PrioritizedSweepingAgent:
 
     def update(self, s, a, r, done, s_next, n_planning_updates):
         self.updateModel(s, a, r, s_next)
+        
+        # Update Q-table.
+        self.Q_sa[s, a] = self.Q_sa[s, a] + self.learning_rate * \
+            (r + self.gamma * np.max(self.Q_sa[s_next, :]) - self.Q_sa[s, a])
+        
         p = np.abs(r + self.gamma *
                    np.max(self.Q_sa[s_next, :]) - self.Q_sa[s, a])
         # Add the state-action pair to the priority queue if its priority is above the cutoff.
@@ -149,7 +151,7 @@ class PrioritizedSweepingAgent:
             for s_next_prime in range(self.n_states):
                 td_error += self.transitionEstimate[priorityState, priorityAction, s_next_prime] * (
                     self.rewardEstimate[priorityState, priorityAction, s_next_prime] + self.gamma * np.max(self.Q_sa[s_next_prime, :]))
-
+            
             # Update model using the td calculated above.
             self.Q_sa[priorityState, priorityAction] += self.learning_rate * \
                 (td_error - self.Q_sa[priorityState, priorityAction])
